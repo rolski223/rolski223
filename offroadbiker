@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Offroad Biking Game</title>
+<style>
+    canvas {
+        border: 1px solid black;
+        display: block;
+        margin: 0 auto;
+    }
+</style>
+</head>
+<body>
+<canvas id="gameCanvas" width="800" height="400"></canvas>
+<script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const bikerImg = new Image();
+    bikerImg.src = "biker.png";
+
+    const treeImg = new Image();
+    treeImg.src = "tree.png";
+
+    const bushImg = new Image();
+    bushImg.src = "bush.png";
+
+    const roadWidth = 80;
+    const roadColor = "#8B4513"; // Brown color for road
+
+    const biker = {
+        x: 50,
+        y: canvas.height / 2,
+        width: 40,
+        height: 60,
+        speed: 5,
+        isJumping: false,
+        jumpPower: 8,
+        isTricking: false,
+        trick: "",
+        trickDuration: 1500 // Duration to complete a trick (in milliseconds)
+    };
+
+    const obstacles = [];
+
+    function createObstacle() {
+        const obstacle = {
+            x: canvas.width,
+            y: Math.random() * (canvas.height - 30) + 15, // Random y position within canvas height
+            width: 20,
+            height: 30,
+            speed: 3,
+            type: Math.random() < 0.3 ? "ramp" : "normal", // 30% chance of being a ramp
+            rampSize: Math.random() * (canvas.height / 4) + 20 // Random ramp size between 20 and 1/4 of canvas height
+        };
+        obstacles.push(obstacle);
+    }
+
+    function drawObstacles() {
+        ctx.fillStyle = "black";
+        obstacles.forEach(obstacle => {
+            if (obstacle.type === "ramp") {
+                drawRamp(obstacle.x, obstacle.y, obstacle.width, obstacle.height, obstacle.rampSize);
+            } else {
+                ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+            }
+        });
+    }
+
+    function drawRamp(x, y, width, height, rampSize) {
+        ctx.beginPath();
+        ctx.moveTo(x, y + height);
+        ctx.lineTo(x + width, y + height);
+        ctx.lineTo(x + width / 2 + rampSize, y);
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    function drawRoad() {
+        ctx.fillStyle = roadColor;
+        ctx.fillRect(0, 0, canvas.width, roadWidth);
+        ctx.fillRect(0, canvas.height - roadWidth, canvas.width, roadWidth);
+    }
+
+    function drawTrees() {
+        for (let i = 0; i < 10; i++) { // Draw 10 trees
+            const treeX = Math.random() * canvas.width;
+            const treeY = Math.random() * canvas.height;
+            ctx.drawImage(treeImg, treeX, treeY);
+        }
+    }
+
+    function drawBushes() {
+        for (let i = 0; i < 15; i++) { // Draw 15 bushes
+            const bushX = Math.random() * canvas.width;
+            const bushY = Math.random() * canvas.height;
+            ctx.drawImage(bushImg, bushX, bushY);
+        }
+    }
+
+    function moveObstacles() {
+        obstacles.forEach(obstacle => {
+            obstacle.x -= obstacle.speed;
+        });
+    }
+
+    function collisionDetection() {
+        obstacles.forEach(obstacle => {
+            if (
+                biker.x < obstacle.x + obstacle.width &&
+                biker.x + biker.width > obstacle.x &&
+                biker.y < obstacle.y + obstacle.height &&
+                biker.y + biker.height > obstacle.y
+            ) {
+                if (obstacle.type === "ramp" && !biker.isJumping) {
+                    biker.isJumping = true;
+                    setTimeout(() => {
+                        biker.isJumping = false;
+                    }, 800 + obstacle.rampSize * 10); // Adjusted jump duration proportional to ramp size
+                    biker.y -= biker.jumpPower; // Adjusted jump power
+                } else if (obstacle.type === "normal") {
+                    // Collision detected! Game over.
+                    gameOver();
+                }
+            }
+        });
+    }
+
+    function drawBiker() {
+        ctx.drawImage(bikerImg, biker.x, biker.y, biker.width, biker.height);
+    }
+
+    function moveBiker(direction) {
+        if (direction === "up" && biker.y > 0) {
+            biker.y -= biker.speed;
+        } else if (direction === "down" && biker.y < canvas.height - biker.height) {
+            biker.y += biker.speed;
+        } else if (direction === "left" && biker.x > 0) {
+            biker.x -= biker.speed;
+        } else if (direction === "right" && biker.x < canvas.width - biker.width) {
+            biker.x += biker.speed;
+        }
+    }
+
+    function brake() {
+        biker.speed -= 2;
+        if (biker.speed < 0) {
+            biker.speed = 0;
+        }
+    }
+
+    function pedal() {
+        biker.speed += 2;
+        if (biker.speed > 10) {
+            biker.speed = 10;
+        }
+    }
+
+    function doTrick(trick) {
+        if (!biker.isTricking) {
+            biker.isTricking = true;
+            biker.trick = trick;
+            setTimeout(() => {
+                biker.isTricking = false;
+                biker.trick = "";
+            }, biker.trickDuration); // Trick duration
+        }
+    }
+
+    function gameOver() {
+        alert("Game over!");
+        location.reload(); // Restart the game
+    }
+
+    function gameLoop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawRoad();
+        drawBiker();
+        drawObstacles();
+        drawTrees();
+        drawBushes();
+        moveObstacles();
+        collisionDetection();
+        requestAnimationFrame(gameLoop);
+    }
+
+    document.addEventListener("keydown", function(event) {
+        if (event.key === "ArrowUp") {
+            moveBiker("up");
+        } else if (event.key === "ArrowDown") {
+            moveBiker("down");
+        } else if (event.key === "ArrowLeft") {
+            moveBiker("left");
+        } else if (event.key === "ArrowRight") {
+            moveBiker("right");
+        } else if (event.key === " ") { // Space bar for braking
+            brake();
+        } else if (event.key === "q") { // "q" key for barspin
+            doTrick("Barspin");
+        } else if (event.key === "e") { // "e" key for tailwhip
+            doTrick("Tailwhip");
+        } else if (event.key === "1") { // "1" key for 180 air
+            doTrick("180 Air");
+        } else if (event.key === "2") { // "2" key for 360 air
+            doTrick("360 Air");
+        } else if (event.key === "3") { // "3" key for frontflip
+            doTrick("Frontflip");
+        } else if (event.key === "4") { // "4" key for backflip
+            doTrick("Backflip");
+        }
+    });
+
+    document.addEventListener("keypress", function(event) {
+        if (event.key === "w") { // "w" key for pedaling
+            pedal();
+        }
+    });
+
+    // Generate obstacles at regular intervals
+    setInterval(createObstacle, 1500);
+
+    gameLoop();
+</script>
+</body>
+</html>
